@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>LightCord Rooms</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial, sans-serif;}
+body{background:#1e1f22;color:#fff;height:100vh;display:flex;justify-content:center;align-items:center;}
+.container{width:420px;background:#2b2d31;padding:25px;border-radius:8px;display:flex;flex-direction:column;gap:20px;}
+h2{text-align:center;font-size:26px;margin-bottom:10px;}
+input{padding:12px;border:none;border-radius:6px;background:#1e1f22;color:white;width:100%;font-size:18px;}
+button{padding:12px;background:#5865f2;border:none;border-radius:6px;color:white;font-weight:bold;cursor:pointer;width:100%;}
+
+#chatPage,#roomPage,#authPage{display:none;}
+
+.message-box{background:#313338;padding:10px;border-radius:8px;margin-bottom:12px;}
+.message-user{font-weight:bold;color:#3aa0ff;margin-bottom:4px;}
+.message-list{height:360px;overflow-y:auto;background:#1e1f22;padding:15px;border-radius:6px;}
+
+.room-row{display:flex;gap:8px;flex-direction:column;}
+</style>
+</head>
+<body>
+
+<div class="container" id="authPage">
+    <h2>Реєстрація / Вхід</h2>
+    <input type="text" id="regNick" placeholder="Нік">
+    <input type="password" id="regPass" placeholder="Пароль">
+    <button id="authBtn">Увійти</button>
+</div>
+
+<div class="container" id="roomPage">
+    <h2>LightCord Rooms</h2>
+
+    <button id="createRoomBtn">Створити кімнату</button>
+
+    <div class="room-row">
+        <input type="number" id="joinID" placeholder="ID кімнати (0000-9999)">
+        <button id="joinRoomBtn">Увійти</button>
+    </div>
+</div>
+
+<div class="container" id="chatPage">
+    <h2 id="roomTitle">Кімната</h2>
+
+    <div class="message-list" id="msgList"></div>
+
+    <input type="text" id="msgInput" placeholder="Повідомлення...">
+
+    <button id="sendBtn">Надіслати</button>
+    <button id="exitBtn" style="background:#ff4747;">Вийти</button>
+    <button id="deleteBtn" style="background:#ff2222;display:none;">Delete Room</button>
+</div>
+
+<script>
+const firebaseConfig = {
+    databaseURL: "https://lightcord-da226-default-rtdb.firebaseio.com/"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const authPage = document.getElementById("authPage");
+const roomPage = document.getElementById("roomPage");
+const chatPage = document.getElementById("chatPage");
+
+const regNick = document.getElementById("regNick");
+const regPass = document.getElementById("regPass");
+const authBtn = document.getElementById("authBtn");
+
+const createRoomBtn = document.getElementById("createRoomBtn");
+const joinRoomBtn = document.getElementById("joinRoomBtn");
+const joinID = document.getElementById("joinID");
+
+const msgList = document.getElementById("msgList");
+const msgInput = document.getElementById("msgInput");
+const sendBtn = document.getElementById("sendBtn");
+const roomTitle = document.getElementById("roomTitle");
+
+const exitBtn = document.getElementById("exitBtn");
+const deleteBtn = document.getElementById("deleteBtn");
+
+let USER = "";
+let ROOM = "";
+let ROOM_OWNER = "";
+
+authBtn.onclick = () => {
+    const nick = regNick.value.trim();
+    const pass = regPass.value.trim();
+    if(!nick || !pass) return;
+
+    db.ref("users/" + nick).once("value", snap => {
+        if(snap.exists()) {
+            if(snap.val().pass === pass) {
+                USER = nick;
+                authPage.style.display = "none";
+                roomPage.style.display = "flex";
+            }
+        } else {
+            db.ref("users/" + nick).set({pass: pass});
+            USER = nick;
+            authPage.style.display = "none";
+            roomPage.style.display = "flex";
+        }
+    });
+};
+
+createRoomBtn.onclick = () => {
+    let id = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+
+    ROOM = id;
+    ROOM_OWNER = USER;
+    roomTitle.innerText = "Кімната #" + id;
+
+    db.ref("rooms/" + id).set({
+        created: USER
+    });
+
+    deleteBtn.style.display = "block";
+
+    msgList.innerHTML = "";
+    roomPage.style.display = "none";
+    chatPage.style.display = "flex";
+
+    startListener();
+};
+
+joinRoomBtn.onclick = () => {
+    let id = joinID.value.trim();
+    if(id.length !== 4) return;
+
+    db.ref("rooms/" + id).once("value", snap => {
+        if(snap.exists()) {
+            ROOM = id;
+            ROOM_OWNER = snap.val().created;
+            roomTitle.innerText = "Кімната #" + id;
+
+            deleteBtn.style.display = USER === ROOM_OWNER ? "block" : "none";
+
+            msgList.innerHTML = "";
+            roomPage.style.display = "none";
+            chatPage.style.display = "flex";
+
+            startListener();
+        }
+    });
+};
+
+sendBtn.onclick = () => {
+    const text = msgInput.value.trim();
+    if(!text) return;
+
+    db.ref("messages/" + ROOM).push({
+        user: USER,
+        text: text,
+        time: Date.now()
+    });
+
+    msgInput.value = "";
+};
+
+function startListener() {
+    db.ref("messages/" + ROOM).off();
+
+    db.ref("messages/" + ROOM).on("child_added", snap => {
+        const data = snap.val();
+
+        const box = document.createElement("div");
+        box.className = "message-box";
+        box.innerHTML = `
+            <div class="message-user">${data.user}</div>
+            <div class="message-text">${data.text}</div>
+        `;
+        msgList.appendChild(box);
+        msgList.scrollTop = msgList.scrollHeight;
+    });
+}
+
+exitBtn.onclick = () => {
+    ROOM = "";
+    chatPage.style.display = "none";
+    roomPage.style.display = "flex";
+};
+
+deleteBtn.onclick = () => {
+    if(USER !== ROOM_OWNER) return;
+
+    db.ref("rooms/" + ROOM).remove();
+    db.ref("messages/" + ROOM).remove();
+
+    ROOM = "";
+    chatPage.style.display = "none";
+    roomPage.style.display = "flex";
+};
+
+authPage.style.display = "flex";
+</script>
+
+</body>
+</html>
