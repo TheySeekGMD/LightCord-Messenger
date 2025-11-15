@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>LightCord Rooms</title>
@@ -28,32 +28,32 @@ button{padding:12px;background:#5865f2;border:none;border-radius:6px;color:white
 <body>
 
 <div class="container" id="authPage">
-    <h2>Реєстрація / Вхід</h2>
-    <input type="text" id="regNick" placeholder="Нік">
-    <input type="password" id="regPass" placeholder="Пароль">
-    <button id="authBtn">Увійти</button>
+    <h2>Register / Login</h2>
+    <input type="text" id="regNick" placeholder="Username">
+    <input type="password" id="regPass" placeholder="Password">
+    <button id="authBtn">Login</button>
 </div>
 
 <div class="container" id="roomPage">
     <h2>LightCord Rooms</h2>
 
-    <button id="createRoomBtn">Створити кімнату</button>
+    <button id="createRoomBtn">Create Room</button>
 
     <div class="room-row">
-        <input type="number" id="joinID" placeholder="ID кімнати (0000-9999)">
-        <button id="joinRoomBtn">Увійти</button>
+        <input type="number" id="joinID" placeholder="Room ID (0000-9999)">
+        <button id="joinRoomBtn">Join</button>
     </div>
 </div>
 
 <div class="container" id="chatPage">
-    <h2 id="roomTitle">Кімната</h2>
+    <h2 id="roomTitle">Room</h2>
 
     <div class="message-list" id="msgList"></div>
 
-    <input type="text" id="msgInput" placeholder="Повідомлення...">
+    <input type="text" id="msgInput" placeholder="Message...">
 
-    <button id="sendBtn">Надіслати</button>
-    <button id="exitBtn" style="background:#ff4747;">Вийти</button>
+    <button id="sendBtn">Send</button>
+    <button id="exitBtn" style="background:#ff4747;">Exit</button>
     <button id="deleteBtn" style="background:#ff2222;display:none;">Delete Room</button>
 </div>
 
@@ -114,7 +114,7 @@ createRoomBtn.onclick = () => {
 
     ROOM = id;
     ROOM_OWNER = USER;
-    roomTitle.innerText = "Кімната #" + id;
+    roomTitle.innerText = "Room #" + id;
 
     db.ref("rooms/" + id).set({
         created: USER
@@ -137,7 +137,7 @@ joinRoomBtn.onclick = () => {
         if(snap.exists()) {
             ROOM = id;
             ROOM_OWNER = snap.val().created;
-            roomTitle.innerText = "Кімната #" + id;
+            roomTitle.innerText = "Room #" + id;
 
             deleteBtn.style.display = USER === ROOM_OWNER ? "block" : "none";
 
